@@ -1,0 +1,12 @@
+# Indici di Compromissione (File Hashes) - Campagna AITM "Winnerclose"
+# Data di estrazione: 21/02/2026
+
+[number.js] - Payload Core (WebSocket & DoS)
+SHA256: e38667a6b4d013f914237828d610f385d66c6d3b22519e73eb116e869bace7a0/
+
+[integrated.js] - Flow Controller & Trigger
+SHA256: [Non disponibile - File analizzato in-stream]
+
+[IT.png] - Asset Grafico Dinamico (Geo-Fencing)
+Dimensione: 597 Bytes
+SHA256: [Non disponibile - File analizzato in-stream]
