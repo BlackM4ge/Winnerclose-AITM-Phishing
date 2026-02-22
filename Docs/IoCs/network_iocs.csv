@@ -1,0 +1,7 @@
+Indicator_Type,Indicator_Value,Description,Confidence,TLP
+Domain,winnerclose.pro,Dominio esca principale e server C2 AITM,High,CLEAR
+Domain,allwebs.ru,Dominio compromesso utilizzato per il fetch di risorse grafiche,Medium,CLEAR
+URL,https://winnerclose.pro/home/final2,Landing page iniziale (Vettore di ingresso),High,CLEAR
+URL,https://winnerclose.pro/login/code2,Endpoint malevolo per tunnel WebSocket,High,CLEAR
+IP,188.114.96.3,Nodo CDN (Cloudflare) che maschera il vero IP del C2,High,CLEAR
+IP,142.250.201.74,Risoluzione Google Fonts (Legittimo ma osservato nel traffico),Low,CLEAR
